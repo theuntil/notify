@@ -1,0 +1,34 @@
+{
+  "name": "ct-notify",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Çocuk Tribünü — e-posta ve SMS doğrulama servisi",
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json && node -e \"require('fs').mkdirSync('dist/lib',{recursive:true});require('fs').copyFileSync('src/lib/schema.sql','dist/lib/schema.sql')\"",
+    "start": "node dist/server.js",
+    "dev": "tsx watch src/server.ts",
+    "typecheck": "tsc --noEmit",
+    "migrate": "node dist/migrate.js"
+  },
+  "dependencies": {
+    "@fastify/cors": "^11.0.1",
+    "@fastify/helmet": "^13.0.1",
+    "@fastify/rate-limit": "^10.2.2",
+    "fastify": "^5.2.1",
+    "nodemailer": "^7.0.6",
+    "pg": "^8.13.1",
+    "pino": "^9.6.0",
+    "zod": "^4.1.11"
+  },
+  "devDependencies": {
+    "@types/node": "^22",
+    "@types/nodemailer": "^7.0.4",
+    "@types/pg": "^8.11.10",
+    "tsx": "^4.19.2",
+    "typescript": "^5.9.2"
+  }
+}

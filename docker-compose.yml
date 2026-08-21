@@ -1,0 +1,106 @@
+# Çocuk Tribünü — Doğrulama Servisi (ct-notify)
+#
+# ═══════════════════════════════════════════════════════════════════════
+#  DOKPLOY KURULUMU
+#
+#  Uygulama tipi olarak "Application" DEĞİL, "Compose" SEÇİN.
+#
+#  Sebep: Application tipi Docker Swarm servisi olarak çalışır ve
+#  Supabase'in bridge ağına katılamaz — veritabanına ulaşamaz.
+#  Compose tipi aynı ağa katılabilir.
+#
+#  1. Dokploy > Create > Compose
+#  2. Provider: GitHub, deponuzu ve dalı seçin
+#  3. Compose Path: ./docker-compose.yml
+#  4. Environment sekmesine .env.example içindeki değerleri girin
+#  5. Deploy
+#
+#  Domain TANIMLAMAYIN. Servis internete açılmasın; Next.js ona
+#  iç ağdan erişecek. Next.js .env.local dosyasında:
+#      NOTIFY_SERVICE_URL=http://ct-notify-notify-1:8080
+# ═══════════════════════════════════════════════════════════════════════
+
+name: ct-notify
+
+services:
+  notify:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+
+    environment:
+      NODE_ENV: production
+      PORT: 8080
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+
+      DATABASE_URL: ${DATABASE_URL}
+      DB_SCHEMA: ${DB_SCHEMA:-notify}
+
+      SERVICE_SECRET: ${SERVICE_SECRET}
+      OTP_PEPPER: ${OTP_PEPPER}
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-}
+
+      OTP_LENGTH: ${OTP_LENGTH:-6}
+      OTP_TTL_SEC: ${OTP_TTL_SEC:-300}
+      OTP_MAX_ATTEMPTS: ${OTP_MAX_ATTEMPTS:-5}
+      OTP_RESEND_COOLDOWN_SEC: ${OTP_RESEND_COOLDOWN_SEC:-60}
+
+      RATE_PER_TARGET_HOUR: ${RATE_PER_TARGET_HOUR:-5}
+      RATE_PER_TARGET_DAY: ${RATE_PER_TARGET_DAY:-15}
+      RATE_PER_IP_HOUR: ${RATE_PER_IP_HOUR:-20}
+
+      SMTP_HOST: ${SMTP_HOST}
+      SMTP_PORT: ${SMTP_PORT:-465}
+      SMTP_SECURE: ${SMTP_SECURE:-true}
+      SMTP_USER: ${SMTP_USER}
+      SMTP_PASS: ${SMTP_PASS}
+      SMTP_FROM_NAME: ${SMTP_FROM_NAME:-Çocuk Tribünü}
+      SMTP_FROM_EMAIL: ${SMTP_FROM_EMAIL}
+
+      TWILIO_ENABLED: ${TWILIO_ENABLED:-true}
+      TWILIO_MODE: ${TWILIO_MODE:-verify}
+      TWILIO_ACCOUNT_SID: ${TWILIO_ACCOUNT_SID}
+      TWILIO_AUTH_TOKEN: ${TWILIO_AUTH_TOKEN}
+      TWILIO_VERIFY_SERVICE_SID: ${TWILIO_VERIFY_SERVICE_SID}
+      TWILIO_FROM_NUMBER: ${TWILIO_FROM_NUMBER:-}
+
+      SITE_URL: ${SITE_URL:-https://cocuktribunu.org}
+      SITE_NAME: ${SITE_NAME:-Çocuk Tribünü}
+      SUPPORT_EMAIL: ${SUPPORT_EMAIL:-iletisim@cocuktribunu.com}
+
+    expose:
+      - 8080
+
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:8080/health').then(r=>{if(r.status!==200)process.exit(1)}).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+
+    # Güvenlik sıkılaştırmaları
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp:size=16m
+    cap_drop:
+      - ALL
+
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+
+    # Supabase'in ağına katıl — veritabanına bu sayede ulaşır
+    networks:
+      - supabase
+
+# Supabase Compose uygulaması tarafından oluşturulmuş MEVCUT ağ.
+# Adı sunucunuza göre değişir; doğrulamak için:
+#     docker network ls | grep -i supabase
+networks:
+  supabase:
+    external: true
+    name: ocuk-tribn-supabase-p7owij
